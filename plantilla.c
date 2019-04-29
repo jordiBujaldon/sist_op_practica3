@@ -74,6 +74,7 @@ int get_column_int(char* line, int num)
     for (tok = strtok(new_line, ",\n"); tok; tok = strtok(NULL, ",\n"))
     {
         if (!--num) {
+	    printf("%d\n", num);
             retvalue = (int) strtol(tok, (char **)NULL, 10);
             return retvalue;
         }
