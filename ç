@@ -60,9 +60,7 @@ int get_data(struct data *data, FILE *file, int max)
 }
 
 void sigus_productor(int signal)
-{
-	// printf("Pare ha rebut la senyal\n");
-}
+{}
 
 
 void productor(int fd, char *filename, int pid)
@@ -96,6 +94,8 @@ void productor(int fd, char *filename, int pid)
 		data_array[0] = data.passenger_count[i];
                 data_array[1] = data.trip_time_in_secs[i];
 
+		printf("%d\n", i);
+
 		write(fd, data_array, sizeof(int *));
 		
 		if (i != 0 && i % 30 == 0) {
@@ -112,7 +112,6 @@ void productor(int fd, char *filename, int pid)
 	free(data.passenger_count);
 	free(data.trip_time_in_secs);
 	free(data_array);
-	exit(0);
 }
 
 void consumidor(int fd, int *data, int pid)
@@ -127,8 +126,10 @@ void consumidor(int fd, int *data, int pid)
 
 	while (1) {
 		read(fd, data_array, sizeof(int *));
-		
+
 		if (data_array[0] == 0 && data_array[1] == 0) {
+			data[0] += passenger_count;
+			data[1] += trip_time_in_secs;
 			break;
 		} else if (data_array[0] == -1 && data_array[1] == -1) {
 			data[0] += passenger_count;
@@ -157,34 +158,28 @@ void consumidor(int fd, int *data, int pid)
     	printf("Mean of trip time: %f secs\n", tt);
 
 	free(data_array);
-	exit(0);
 }
 
 void sigus_consumidor(int signal)
-{
-	// printf("Fill ha rebut la senyal\n");
-}
+{}
 
 int main(int argc, char *argv[])
 {
-	int fd[2], ret, parent_pid, child_pid;
+	int fd[2];
 
 	pipe(fd);
-	ret = fork();
 
-	if (ret == 0) {		// Child --> consumidor
+	if (fork() == 0) {		// Child --> consumidor
 		int *data = malloc(sizeof(int) * 2);
 		data[0] = 0;			// Guardem els passenger_count
 		data[1] = 0;			// Guardem els trip_time_in_secs
-		parent_pid = getppid();
 
 		signal(SIGUSR2, sigus_consumidor);
-		consumidor(fd[0], data, parent_pid);
+		consumidor(fd[0], data, getppid());
 		free(data);
 	} else {			// Parent --> productor
 		char *filename = argv[1];
-		child_pid = ret;
-		productor(fd[1], filename, child_pid);
+		productor(fd[1], filename, fork());
 	}
 	return 0;
 }
